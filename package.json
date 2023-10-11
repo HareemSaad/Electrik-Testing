@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@uniswap/swap-router-contracts": "^1.2.1"
+  }
+}
