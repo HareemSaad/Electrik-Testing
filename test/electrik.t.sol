@@ -214,8 +214,8 @@ contract ElectrikTest is Test {
                 3000, // fee tier
                 caller, // recipient
                 1000 * 10 ** 6, // amount in
-                0 ether, // amount out minimum
-                800 // sqrtPriceLimitx96
+                0.4 ether, // amount out minimum
+                0 // sqrtPriceLimitx96
             );
         uint256 amountOut = swapRouter.exactInputSingle(params);
 
@@ -236,8 +236,8 @@ contract ElectrikTest is Test {
                 3000, // fee tier
                 caller, // recipient
                 1000 * 10 ** 6, // amount in
-                0 ether, // amount out minimum
-                800 // sqrtPriceLimitx96
+                0.4 ether, // amount out minimum
+                0 // sqrtPriceLimitx96
             );
         uint256 amountOut = swapRouter.exactInputSingle(params);
 
