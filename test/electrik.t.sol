@@ -273,4 +273,36 @@ contract ElectrikTest is Test {
 
         vm.stopPrank();
     }
+
+    function testSwapIV() public {
+
+        uint oldBalance = IERC20(address(weth)).balanceOf(caller);
+
+        vm.startPrank(caller);
+        IERC20(address(usdc)).approve(address(swapRouter), UINT256_MAX);
+        IERC20(address(weth)).approve(address(swapRouter), UINT256_MAX);
+        IERC20(address(dai)).approve(address(swapRouter), UINT256_MAX);
+        (
+            uint256 amountOut
+        ) = swapRouter.exactInput(
+            IV3SwapRouter.ExactInputParams(
+                abi.encodePacked (
+                    address(dai),
+                    uint24(3000),
+                    address(usdc),
+                    uint24(3000),
+                    address(weth)
+                ),
+                caller,
+                1000 * 10 ** 18,
+                0.4 ether
+            )
+        );
+        uint newBalance = IERC20(address(weth)).balanceOf(caller);
+
+        console2.log(amountOut);
+        console2.log(oldBalance, newBalance);
+
+        vm.stopPrank();
+    }
 }
