@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import {Test, console2} from "forge-std/Test.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/external/IWETH9.sol";
 // import "@uniswap/v3-periphery/contracts/SwapRouter.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -26,9 +27,12 @@ contract ElectrikTest is Test {
         INonfungiblePositionManager(
             vm.envAddress("NONFUNGIBLETOKEN_POSITION_MANAGER_ADDRESS")
         );
+    IUniswapV3Factory factory = IUniswapV3Factory(vm.envAddress("V3_CORE_FACTORY_ADDRESSES"));
     IWETH9 weth = IWETH9(vm.envAddress("WETH"));
     IL2ERC20Template usdc = IL2ERC20Template(vm.envAddress("USDC"));
-    IUniswapV3Pool pool = IUniswapV3Pool(vm.envAddress("USDC_WETH_POOL"));
+    IL2ERC20Template dai = IL2ERC20Template(vm.envAddress("DAI"));
+    IUniswapV3Pool pool_usdc_weth = IUniswapV3Pool(vm.envAddress("USDC_WETH_POOL"));
+    IUniswapV3Pool pool_usdc_dai;
     ISwapRouter02 swapRouter = ISwapRouter02(vm.envAddress("SWAPROUTER02"));
     // SwapRouter swapRouter1 = SwapRouter(payable(vm.envAddress("SWAPROUTER02")));
     address caller = 0x5adaf849e40B5b1303507299D3d06a4663D3A8b8;
@@ -36,12 +40,18 @@ contract ElectrikTest is Test {
     uint128 liquidity;
     uint256 amount0;
     uint256 amount1;
+    uint256 tokenId_2;
+    uint128 liquidity_2;
+    uint256 amount0_2;
+    uint256 amount1_2;
     bytes nullBytes;
     address zero = 0xDD174edF007BC90FA2c4941A7a29efc432c14C7f;
 
     function setUp() public {
         vm.prank(0x63105ee97BfB22Dfe23033b3b14A4F8FED121ee9);
-        usdc.mint(caller, 4000 * 10 ** 6);
+        usdc.mint(caller, 10000 * 10 ** 6);
+        vm.prank(0x63105ee97BfB22Dfe23033b3b14A4F8FED121ee9);
+        dai.mint(caller, 10000 * 10 ** 18);
 
         vm.startPrank(caller);
 
@@ -50,8 +60,11 @@ contract ElectrikTest is Test {
 
         console2.log("WETH deposit successful");
 
+        pool_usdc_dai = IUniswapV3Pool(factory.createPool(address(usdc), address(dai), 3000));
+        pool_usdc_dai.initialize(79228162514264337593543950336000000);
+
         // token0 = usdc, token1 = weth
-        pool.initialize(1771595571142957166518320255467520);
+        pool_usdc_weth.initialize(1771595571142957166518320255467520);
 
         // (
         //     uint160 sqrtPriceX96,
@@ -61,11 +74,12 @@ contract ElectrikTest is Test {
         //     uint16 observationCardinalityNext,
         //     uint8 feeProtocol,
         //     bool unlocked
-        // ) = pool.slot0();
+        // ) = pool_usdc_dai.slot0();
 
         // console2.log(tick);
         IERC20(address(usdc)).approve(address(positionManager), UINT256_MAX);
         IERC20(address(weth)).approve(address(positionManager), UINT256_MAX);
+        IERC20(address(dai)).approve(address(positionManager), UINT256_MAX);
 
         // mint a new position
         INonfungiblePositionManager.MintParams
@@ -86,6 +100,26 @@ contract ElectrikTest is Test {
         (tokenId, liquidity, amount0, amount1) = positionManager.mint(params);
 
         console2.log(tokenId, liquidity, amount0, amount1);
+
+        // mint a new position
+        INonfungiblePositionManager.MintParams
+            memory params1 = INonfungiblePositionManager.MintParams(
+                address(usdc),
+                address(dai),
+                3000,
+                276300,
+                276360,
+                1000 * 10 ** 6, // Desired amount of token0
+                1000 * 10 ** 18, // Desired amount of token1
+                900 * 10 ** 6, // Minimum amount of token1
+                600 * 10 ** 18, // Minimum amount of token0
+                caller,
+                block.timestamp + 33600 // Deadline 1 hour from now
+            );
+
+        (tokenId_2, liquidity_2, amount0_2, amount1_2) = positionManager.mint(params1);
+
+        console2.log(tokenId_2, liquidity_2, amount0_2, amount1_2);
 
         vm.stopPrank();
     }
@@ -126,7 +160,7 @@ contract ElectrikTest is Test {
 
         console2.log(liquidity, amount0, amount1);
 
-        // get pool info from LP token
+        // get pool_usdc_weth info from LP token
         (
             ,
             ,
@@ -181,7 +215,7 @@ contract ElectrikTest is Test {
                 caller, // recipient
                 1000 * 10 ** 6, // amount in
                 0 ether, // amount out minimum
-                0 // sqrtPriceLimitx96
+                800 // sqrtPriceLimitx96
             );
         uint256 amountOut = swapRouter.exactInputSingle(params);
 
@@ -190,27 +224,53 @@ contract ElectrikTest is Test {
         vm.stopPrank();
     }
 
-    // function testSwapII() public {
+    function testSwapII() public {
+        vm.startPrank(caller);
+        IERC20(address(usdc)).approve(address(swapRouter), UINT256_MAX);
+        IERC20(address(dai)).approve(address(swapRouter), UINT256_MAX);
 
-    //     vm.startPrank(caller);
-    //     (
-    //         uint256 amountOut
-    //     ) = swapRouter.exactInput(
-    //         ISwapRouter.ExactInputParams(
-    //             abi.encodePacked (
-    //                 address(weth),
-    //                 uint24(3000),
-    //                 address(usdc)
-    //             ),
-    //             caller,
-    //             block.timestamp + 3600,
-    //             1 ether,
-    //             1800 * 10 ** 6
-    //         )
-    //     );
+        IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
+            .ExactInputSingleParams(
+                address(usdc), // token in
+                address(dai), // token out
+                3000, // fee tier
+                caller, // recipient
+                1000 * 10 ** 6, // amount in
+                0 ether, // amount out minimum
+                800 // sqrtPriceLimitx96
+            );
+        uint256 amountOut = swapRouter.exactInputSingle(params);
 
-    //     console2.log(amountOut);
+        console2.log(amountOut);
 
-    //     vm.stopPrank();
-    // }
+        vm.stopPrank();
+    }
+
+    function testSwapIII() public {
+
+        vm.startPrank(caller);
+        IERC20(address(usdc)).approve(address(swapRouter), UINT256_MAX);
+        IERC20(address(weth)).approve(address(swapRouter), UINT256_MAX);
+        IERC20(address(dai)).approve(address(swapRouter), UINT256_MAX);
+        (
+            uint256 amountOut
+        ) = swapRouter.exactInput(
+            IV3SwapRouter.ExactInputParams(
+                abi.encodePacked (
+                    address(weth),
+                    uint24(3000),
+                    address(usdc),
+                    uint24(3000),
+                    address(dai)
+                ),
+                caller,
+                1 ether,
+                500 * 10 ** 18
+            )
+        );
+
+        console2.log(amountOut);
+
+        vm.stopPrank();
+    }
 }
