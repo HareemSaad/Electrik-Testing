@@ -8,9 +8,8 @@ import "@uniswap/v3-periphery/contracts/interfaces/external/IWETH9.sol";
 // import "@uniswap/v3-periphery/contracts/SwapRouter.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-
-import {ISwapRouter02} from "swap-router-02/interfaces/ISwapRouter02.sol";
-import {IV3SwapRouter} from "swap-router-02/interfaces/IV3SwapRouter.sol";
+import "swap-router-contracts/contracts/interfaces/ISwapRouter02.sol";
+import "swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
 
 interface IL2ERC20Template {
     function decimals() external view returns (uint8);
