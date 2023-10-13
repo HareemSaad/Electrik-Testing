@@ -305,4 +305,34 @@ contract ElectrikTest is Test {
 
         vm.stopPrank();
     }
+
+    function testSwapV() public {
+
+        uint oldBalanceWeth = IERC20(address(weth)).balanceOf(caller);
+        uint oldBalance = caller.balance;
+
+        vm.startPrank(caller);
+        IERC20(address(usdc)).approve(address(swapRouter), UINT256_MAX);
+        IERC20(address(dai)).approve(address(swapRouter), UINT256_MAX);
+
+        IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
+            .ExactInputSingleParams(
+                address(weth), // token out
+                address(usdc), // token in
+                3000, // fee tier
+                caller, // recipient
+                0.5 ether, // amount out minimum
+                900 * 10 ** 6, // amount in
+                0 // sqrtPiceLimitx96
+            );
+        uint256 amountOut = swapRouter.exactInputSingle{value: 0.5 ether}(params);
+        uint newBalanceWeth = IERC20(address(weth)).balanceOf(caller);
+        uint newBalance = caller.balance;
+
+        console2.log(amountOut);
+        assert(oldBalanceWeth == newBalanceWeth);
+        assert(oldBalance - 0.5 ether == newBalance);
+
+        vm.stopPrank();
+    }
 }
